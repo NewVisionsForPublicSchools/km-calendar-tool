@@ -5,14 +5,14 @@ var STAFFLIST = SpreadsheetApp.openById(PropertiesService.getScriptProperties().
 
 function getMeetings(){
 	// Declare variables
-	var srMgmt, calendars, start, end, meetings;
+	var srMgmt, calendars, start, end, meetings, records;
 
 	// Get list of senior management emails
 	srMgmt = NVSL.getRowsData(STAFFLIST).filter(function(e){
 		return e.jobClass == 'NV Senior Management';
 	});
 
-	// Get calendars for senior management
+	// Get calendars for senior management and subscribe if not already
 	calendars = srMgmt.map(function(e){
 		var cal = CalendarApp.getCalendarById(e.workEmail);
 		var toss = !cal ? (CalendarApp.subscribeToCalendar(e.workEmail), CalendarApp.getCalendarById(e.workEmail)) : cal;
@@ -29,7 +29,41 @@ function getMeetings(){
 	}).filter(function(e){
 		return e.getGuestList().length > 0;
 	});
-	debugger;
 
 	// Write meetings to log
+	records = meetings.map(function(e){
+		var evt = {
+			createdBy: e.getCreators().join(),
+			dateCreated: e.getDateCreated(),
+			owner: e.getCreators().join(),
+			title: e.getTitle(),
+			start: e.getStartTime(),
+			end: e.getEndTime(),
+			guests: parseGuestList(e.getGuestList()).join(),
+			eventId: e.getId(),
+			description: e.getDescription(),
+			location: e.getLocation(),
+			calendar: e.getName()
+		};
+		return evt;
+	});
+	logSheet = LOGSS.getSheetByName('Jan 2016');
+	header = logSheet.getRange(1,1,1,logSheet.getLastColumn());
+	NVSL.setRowsData(logSheet, records, header, logSheet.getLastRow() + 1);
+}
+
+
+
+function parseGuestList(list){
+	// Declare variables
+	var emails;
+
+	// Get email addresses for guest list
+	emails = list.map(function(e){
+		return e.getEmail();
+	}).filter(function(e){
+		return e.search('resource.calendar.google.com') < 0;
+	});
+
+	return emails;
 }
